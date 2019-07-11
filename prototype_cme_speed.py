@@ -47,8 +47,8 @@ print(downloaded_files)
 
 ##############################################################################
 # Let's create a dictionary with the two maps, which we crop to full disk.
-maps = {m.detector: m.submap(SkyCoord([-1100, 1100], [-1100, 1100],
-                                      unit=u.arcsec, frame=m.coordinate_frame))
+maps = {m.name.split(' ', 1)[0]: m.submap(SkyCoord([-1100, 1100], [-1100, 1100],
+                                                   unit=u.arcsec, frame=m.coordinate_frame))
         for m in sunpy.map.Map(downloaded_files)}
 
 ##############################################################################
@@ -70,8 +70,8 @@ fig = plt.figure(figsize=(10, 4))
 ax1 = fig.add_subplot(1, 2, 1, projection=maps['AIA'])
 maps['AIA'].plot(axes=ax1)
 
-ax2 = fig.add_subplot(1, 2, 2, projection=maps['EUVI'])
-maps['EUVI'].plot(axes=ax2)
+ax2 = fig.add_subplot(1, 2, 2, projection=maps['EUVI-B'])
+maps['EUVI-B'].plot(axes=ax2)
 
 click_coords = []
 
@@ -93,9 +93,8 @@ def onclick(event):
 
 
 def which_map_clicked(event):
-    # figure out if it was AIA, EUVI-A, EUVI-B, or SWAP image that was clicked
     plot_title = event.inaxes.title.get_text()
-    instrument_name = plot_title.split(' ', 1)[0].split('-', 1)[0]
+    instrument_name = plot_title.split(' ', 1)[0]
     return instrument_name
 
 
@@ -116,20 +115,20 @@ def translate_skycoord_to_other_map(clicked_skycoord):
 
 
 def draw_clicked_circle(clicked_skycoord):
-    if ax1.axes.title.get_text().split(' ', 1)[0].split('-', 1)[0] == clicked_map:
+    if ax1.axes.title.get_text().split(' ', 1)[0] == clicked_map:
         ax1.plot_coord(clicked_skycoord, color='g', marker='o', fillstyle='none')
     else:
         ax2.plot_coord(clicked_skycoord, color='g', marker='o', fillstyle='none')
 
 
 def draw_translated_line(line_coords):
-    if ax1.axes.title.get_text().split(' ', 1)[0].split('-', 1)[0] == other_map:
+    if ax1.axes.title.get_text().split(' ', 1)[0] == other_map:
         axlim = ax1.axis()
-        ax1.plot_coord(line_coords, color='g')  # TODO: change ax2 to whichever corresponds to the other map
+        ax1.plot_coord(line_coords, color='g')
         ax1.axis(axlim)
     else:
         axlim = ax2.axis()
-        ax2.plot_coord(line_coords, color='g')  # TODO: change ax2 to whichever corresponds to the other map
+        ax2.plot_coord(line_coords, color='g')
         ax2.axis(axlim)
     plt.draw()
 
