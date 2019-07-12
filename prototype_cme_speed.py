@@ -18,6 +18,9 @@ import sunpy.map
 import sunpy.coordinates.wcs_utils
 from sunpy.coordinates.frames import Helioprojective
 from sunpy.net import Fido, attrs as a
+
+from shapely.geometry import LineString, Point
+
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -74,18 +77,21 @@ ax2 = fig.add_subplot(1, 2, 2, projection=maps['EUVI-B'])
 maps['EUVI-B'].plot(axes=ax2)
 
 click_coords = []
+line_of_sight_is_defined = False
 
 
 def onclick(event):
-    global clicked_map, other_map
+    global clicked_map, other_map, line_of_sight_is_defined
     clicked_map = which_map_clicked(event)
     other_map = which_is_other_map()
     clicked_skycoord = get_clicked_skycoord(event)
 
-    line_coords = translate_skycoord_to_other_map(clicked_skycoord)
+    translate_skycoord_to_other_map(clicked_skycoord)
 
     draw_clicked_circle(clicked_skycoord)
-    draw_translated_line(line_coords)
+    draw_translated_line()
+
+    line_of_sight_is_defined = True
 
     closeout_clicks(event)
 
@@ -93,8 +99,7 @@ def onclick(event):
 
 
 def which_map_clicked(event):
-    plot_title = event.inaxes.title.get_text()
-    instrument_name = plot_title.split(' ', 1)[0]
+    instrument_name = event.inaxes.title.get_text().split(' ', 1)[0]
     return instrument_name
 
 
@@ -109,9 +114,9 @@ def get_clicked_skycoord(event):
 
 
 def translate_skycoord_to_other_map(clicked_skycoord):
+    global line_coords
     point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * [0.5, 1.5] * u.AU)
     line_coords = point_to_line.transform_to(Helioprojective(observer=maps[other_map].coordinate_frame.observer))
-    return line_coords
 
 
 def draw_clicked_circle(clicked_skycoord):
@@ -121,15 +126,20 @@ def draw_clicked_circle(clicked_skycoord):
         ax2.plot_coord(clicked_skycoord, color='g', marker='o', fillstyle='none')
 
 
-def draw_translated_line(line_coords):
+def draw_translated_line():
+    global ax3
     if ax1.axes.title.get_text().split(' ', 1)[0] == other_map:
-        axlim = ax1.axis()
+        ax_lim = ax1.axis()
         ax1.plot_coord(line_coords, color='g')
-        ax1.axis(axlim)
+        ax1.axis(ax_lim)
     else:
-        axlim = ax2.axis()
+        ax_lim = ax2.axis()
         ax2.plot_coord(line_coords, color='g')
-        ax2.axis(axlim)
+        ax2.axis(ax_lim)
+    ax3 = plt.annotate(' ', (500, 500),
+                       xycoords='data',
+                       bbox=dict(boxstyle="circle", edgecolor="y", facecolor='None'),
+                       axes=ax2)  # TODO: Change ax2 to whichever is relevant
     plt.draw()
 
 
@@ -138,8 +148,32 @@ def closeout_clicks(event):
     click_coords.append(event.x)
 
     if len(click_coords) == 2:
-        fig.canvas.mpl_disconnect(cid)
+        fig.canvas.mpl_disconnect(cid1)
+        fig.canvas.mpl_disconnect(cid2)
 
 
-cid = fig.canvas.mpl_connect('button_press_event', onclick)
+def on_mouse_move(event):
+    if line_of_sight_is_defined:
+        if event.xdata is not None:
+            instrument_name = event.inaxes.title.get_text().split(' ', 1)[0]
+            if instrument_name == other_map:
+                closest_point = get_closest_line_of_sight_point(event)
+                draw_clicked_3d_point(closest_point)
+
+
+def get_closest_line_of_sight_point(event):
+    line = LineString([line_coords.Tx.value, line_coords.Ty.value])
+    point = Point(event.xdata, event.ydata)
+    closest_point = line.interpolate(line.project(point))
+    return closest_point
+
+
+def draw_clicked_3d_point(closest_point):
+    print(closest_point)
+    ax3.set_position((closest_point.x, closest_point.y))
+    plt.draw()
+
+
+cid1 = fig.canvas.mpl_connect('button_press_event', onclick)
+#cid2 = fig.canvas.mpl_connect('motion_notify_event', on_mouse_move)
 plt.show()
