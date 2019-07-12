@@ -85,13 +85,15 @@ def onclick(event):
     clicked_map = which_map_clicked(event)
     other_map = which_is_other_map()
     clicked_skycoord = get_clicked_skycoord(event)
-
-    translate_skycoord_to_other_map(clicked_skycoord)
-
     draw_clicked_circle(clicked_skycoord)
-    draw_translated_line()
 
-    line_of_sight_is_defined = True
+    if len(click_coords) == 0:
+        translate_skycoord_to_other_map(clicked_skycoord)
+        draw_translated_line()
+        line_of_sight_is_defined = True
+    elif len(click_coords) == 1:
+        point_in_3d = get_3d_position(clicked_skycoord)
+        print(point_in_3d)
 
     closeout_clicks(event)
 
@@ -136,11 +138,15 @@ def draw_translated_line():
         ax_lim = ax2.axis()
         ax2.plot_coord(line_coords, color='g')
         ax2.axis(ax_lim)
-    ax3 = plt.annotate(' ', (500, 500),
+    ax3 = plt.annotate(' ', (0, 0),
                        xycoords='data',
                        bbox=dict(boxstyle="circle", edgecolor="y", facecolor='None'),
                        axes=ax2)  # TODO: Change ax2 to whichever is relevant
     plt.draw()
+
+
+def get_3d_position(clicked_skycoord):
+    pass
 
 
 def closeout_clicks(event):
