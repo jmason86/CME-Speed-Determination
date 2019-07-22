@@ -93,8 +93,9 @@ def onclick(event):
         draw_translated_line()
         line_of_sight_is_defined = True
     elif len(click_coords) == 1:
-        point_in_3d = get_3d_position(clicked_skycoord)
-        print(point_in_3d)
+        skycoord_3d = get_3d_position(clicked_skycoord)
+        draw_3d_point(skycoord_3d)
+        print(skycoord_3d)
 
     closeout_clicks(event)
 
@@ -118,7 +119,7 @@ def get_clicked_skycoord(event):
 
 def translate_skycoord_to_other_map(clicked_skycoord):
     global line_coords
-    point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * [200, 213] * u.solRad)
+    point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * np.linspace(200, 213, 14) * u.solRad)
     line_coords = point_to_line.transform_to(Helioprojective(observer=maps[other_map].coordinate_frame.observer))
 
 
@@ -147,16 +148,29 @@ def draw_translated_line():
 
 
 def get_3d_position(clicked_skycoord):
-    line2 = clicked_skycoord.realize_frame(clicked_skycoord.spherical * [0.5, 1.5] * u.km)
-    p1 = Point3D(line2.cartesian.x.to(u.solRad).value[0], line2.cartesian.y.to(u.solRad).value[0], line2.cartesian.z.to(u.solRad).value[0])
-    p2 = Point3D(line2.cartesian.x.to(u.solRad).value[1], line2.cartesian.y.to(u.solRad).value[1], line2.cartesian.z.to(u.solRad).value[1])
-    p3 = Point3D(line_coords.cartesian.x.to(u.solRad).value[0], line_coords.cartesian.y.to(u.solRad).value[0], line_coords.cartesian.z.to(u.solRad).value[0])
-    p4 = Point3D(line_coords.cartesian.x.to(u.solRad).value[1], line_coords.cartesian.y.to(u.solRad).value[1], line_coords.cartesian.z.to(u.solRad).value[1])
-    sym_line_of_sight = Line3D(p3, p4)
-    point_3d = sym_line_of_sight.projection(p1)
-    point_3d = point_3d.evalf()  # convert from rational ratio to float
-    skycoord_3d = SkyCoord(float(point_3d.x), float(point_3d.y), float(point_3d.z), unit=u.solRad, representation_type='cartesian', frame=maps[other_map].coordinate_frame)
-    pass
+    # line2 = clicked_skycoord.realize_frame(clicked_skycoord.spherical * [0.5, 1.5] * u.km)
+    # p1 = Point3D(line2.cartesian.x.to(u.solRad).value[0], line2.cartesian.y.to(u.solRad).value[0], line2.cartesian.z.to(u.solRad).value[0])
+    # p2 = Point3D(line2.cartesian.x.to(u.solRad).value[1], line2.cartesian.y.to(u.solRad).value[1], line2.cartesian.z.to(u.solRad).value[1])
+    # p3 = Point3D(line_coords.cartesian.x.to(u.solRad).value[0], line_coords.cartesian.y.to(u.solRad).value[0], line_coords.cartesian.z.to(u.solRad).value[0])
+    # p4 = Point3D(line_coords.cartesian.x.to(u.solRad).value[1], line_coords.cartesian.y.to(u.solRad).value[1], line_coords.cartesian.z.to(u.solRad).value[1])
+    # sym_line_of_sight = Line3D(p3, p4)
+    # point_3d = sym_line_of_sight.projection(p1)
+    # point_3d = point_3d.evalf()  # convert from rational ratio to float
+    # skycoord_3d = SkyCoord(float(point_3d.x), float(point_3d.y), float(point_3d.z), unit=u.solRad, representation_type='cartesian', frame=maps[other_map].coordinate_frame)
+
+    skycoord_3d = SkyCoord(line_coords[7])
+    return skycoord_3d
+
+
+def draw_3d_point(skycoord_3d):
+    skycoord_3d_in_clicked_map = skycoord_3d.transform_to(maps[clicked_map].coordinate_frame)
+
+    if ax1.axes.title.get_text().split(' ', 1)[0] == clicked_map:
+        ax1.plot_coord(skycoord_3d_in_clicked_map, color='blue', marker='o')
+        ax2.plot_coord(skycoord_3d, color='blue', marker='o')
+    else:
+        ax2.plot_coord(skycoord_3d_in_clicked_map, color='blue', marker='o')
+        ax1.plot_coord(skycoord_3d, color='blue', marker='o')
 
 
 def closeout_clicks(event):
@@ -165,7 +179,7 @@ def closeout_clicks(event):
 
     if len(click_coords) == 2:
         fig.canvas.mpl_disconnect(cid1)
-        fig.canvas.mpl_disconnect(cid2)
+        #fig.canvas.mpl_disconnect(cid2)
 
 
 def on_mouse_move(event):
