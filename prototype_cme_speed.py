@@ -20,6 +20,7 @@ from sunpy.coordinates.frames import Helioprojective
 from sunpy.net import Fido, attrs as a
 
 from shapely.geometry import LineString, Point
+from sympy import Point3D, Line3D
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -117,7 +118,7 @@ def get_clicked_skycoord(event):
 
 def translate_skycoord_to_other_map(clicked_skycoord):
     global line_coords
-    point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * [0.5, 1.5] * u.AU)
+    point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * [200, 213] * u.solRad)
     line_coords = point_to_line.transform_to(Helioprojective(observer=maps[other_map].coordinate_frame.observer))
 
 
@@ -146,6 +147,15 @@ def draw_translated_line():
 
 
 def get_3d_position(clicked_skycoord):
+    line2 = clicked_skycoord.realize_frame(clicked_skycoord.spherical * [0.5, 1.5] * u.km)
+    p1 = Point3D(line2.cartesian.x.to(u.solRad).value[0], line2.cartesian.y.to(u.solRad).value[0], line2.cartesian.z.to(u.solRad).value[0])
+    p2 = Point3D(line2.cartesian.x.to(u.solRad).value[1], line2.cartesian.y.to(u.solRad).value[1], line2.cartesian.z.to(u.solRad).value[1])
+    p3 = Point3D(line_coords.cartesian.x.to(u.solRad).value[0], line_coords.cartesian.y.to(u.solRad).value[0], line_coords.cartesian.z.to(u.solRad).value[0])
+    p4 = Point3D(line_coords.cartesian.x.to(u.solRad).value[1], line_coords.cartesian.y.to(u.solRad).value[1], line_coords.cartesian.z.to(u.solRad).value[1])
+    sym_line_of_sight = Line3D(p3, p4)
+    point_3d = sym_line_of_sight.projection(p1)
+    point_3d = point_3d.evalf()  # convert from rational ratio to float
+    skycoord_3d = SkyCoord(float(point_3d.x), float(point_3d.y), float(point_3d.z), unit=u.solRad, representation_type='cartesian', frame=maps[other_map].coordinate_frame)
     pass
 
 
