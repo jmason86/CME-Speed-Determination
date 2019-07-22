@@ -158,7 +158,7 @@ def get_3d_position(clicked_skycoord):
     # point_3d = point_3d.evalf()  # convert from rational ratio to float
     # skycoord_3d = SkyCoord(float(point_3d.x), float(point_3d.y), float(point_3d.z), unit=u.solRad, representation_type='cartesian', frame=maps[other_map].coordinate_frame)
 
-    skycoord_3d = SkyCoord(line_coords[7])
+    skycoord_3d = SkyCoord(line_coords[11])
     return skycoord_3d
 
 
@@ -171,6 +171,7 @@ def draw_3d_point(skycoord_3d):
     else:
         ax2.plot_coord(skycoord_3d_in_clicked_map, color='blue', marker='o')
         ax1.plot_coord(skycoord_3d, color='blue', marker='o')
+    plt.draw()
 
 
 def closeout_clicks(event):
