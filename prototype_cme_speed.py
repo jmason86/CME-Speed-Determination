@@ -119,7 +119,8 @@ def get_clicked_skycoord(event):
 
 def translate_skycoord_to_other_map(clicked_skycoord):
     global line_coords
-    point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * np.linspace(200, 213, 14) * u.solRad)
+    #point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * np.linspace(200, 213, 14) * u.solRad)
+    point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * np.linspace(0.5, 1.5, 1e6) * u.AU)
     line_coords = point_to_line.transform_to(Helioprojective(observer=maps[other_map].coordinate_frame.observer))
 
 
@@ -158,7 +159,7 @@ def get_3d_position(clicked_skycoord):
     # point_3d = point_3d.evalf()  # convert from rational ratio to float
     # skycoord_3d = SkyCoord(float(point_3d.x), float(point_3d.y), float(point_3d.z), unit=u.solRad, representation_type='cartesian', frame=maps[other_map].coordinate_frame)
 
-    skycoord_3d = SkyCoord(line_coords[11])
+    skycoord_3d = SkyCoord(line_coords[480000])
     return skycoord_3d
 
 
