@@ -129,41 +129,20 @@ def draw_clicked_circle(clicked_skycoord):
 
 
 def draw_translated_line():
-    global ax3, ax_los
     if ax1_map_name == other_map:
         ax_lim = ax1.axis()
-        ax_los = ax1.plot_coord(line_coords, color='g', picker=5)
+        ax1.plot_coord(line_coords, color='g', picker=5)
         ax1.axis(ax_lim)
     else:
         ax_lim = ax2.axis()
-        ax_los = ax2.plot_coord(line_coords, color='g', picker=5)
+        ax2.plot_coord(line_coords, color='g', picker=5)
         ax2.axis(ax_lim)
-    ax3 = plt.annotate(' ', (0, 0),  # This circle is to show which nearest point on the line the user is hovering over
-                       xycoords='data',
-                       bbox=dict(boxstyle="circle", edgecolor="y", facecolor='None'),
-                       axes=ax2)  # TODO: Change ax2 to whichever is relevant
     plt.draw()
 
 
 def closeout_clicks(event):
     if line_of_sight_is_defined:
         fig.canvas.mpl_disconnect(cid1)
-        #fig.canvas.mpl_disconnect(cid2)
-
-
-def on_mouse_move(event):
-    if line_of_sight_is_defined:
-        if event.xdata is not None:
-            instrument_name = event.inaxes.title.get_text().split(' ', 1)[0]
-            if instrument_name == other_map:
-                closest_point = get_closest_line_of_sight_point(event)
-
-
-def get_closest_line_of_sight_point(event):
-    line = LineString([line_coords.Tx.value, line_coords.Ty.value])
-    point = Point(event.xdata, event.ydata)
-    closest_point = line.interpolate(line.project(point))
-    return closest_point
 
 
 def pick_los_point(event):
@@ -185,7 +164,7 @@ def draw_3d_points(skycoord_3d):
 
     plt.draw()
 
+
 cid1 = fig.canvas.mpl_connect('button_press_event', onclick)
-#cid2 = fig.canvas.mpl_connect('motion_notify_event', on_mouse_move)
 fig.canvas.mpl_connect('pick_event', pick_los_point)
 plt.show()
