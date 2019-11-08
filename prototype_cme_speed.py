@@ -151,6 +151,9 @@ def pick_los_point(event):
         skycoord_3d = line_coords[index]
         draw_3d_points(skycoord_3d)
 
+        print(skycoord_3d)  # TODO: need to pass this to another function that'll do something with it
+    return True
+
 
 def draw_3d_points(skycoord_3d):
     skycoord_3d_in_other_map = skycoord_3d.transform_to(maps[other_map].coordinate_frame)
