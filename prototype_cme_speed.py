@@ -75,6 +75,7 @@ coords = SkyCoord(x, y, frame=maps['AIA'].coordinate_frame)
 fig = plt.figure(figsize=(10, 4))
 ax1 = fig.add_subplot(1, 2, 1, projection=maps['AIA'])
 maps['AIA'].plot(axes=ax1)
+ax1_map_name = ax1.axes.title.get_text().split(' ', 1)[0]
 
 ax2 = fig.add_subplot(1, 2, 2, projection=maps['EUVI-B'])
 maps['EUVI-B'].plot(axes=ax2)
@@ -116,13 +117,12 @@ def get_clicked_skycoord(event):
 
 def translate_skycoord_to_other_map(clicked_skycoord):
     global line_coords
-    #point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * np.linspace(200, 213, 14) * u.solRad)
     point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * np.linspace(0.9, 1.1, 1e6) * u.AU)
     line_coords = point_to_line.transform_to(maps[other_map].coordinate_frame)
 
 
 def draw_clicked_circle(clicked_skycoord):
-    if ax1.axes.title.get_text().split(' ', 1)[0] == clicked_map:
+    if ax1_map_name == clicked_map:
         ax1.plot_coord(clicked_skycoord, color='g', marker='o', fillstyle='none')
     else:
         ax2.plot_coord(clicked_skycoord, color='g', marker='o', fillstyle='none')
@@ -130,9 +130,9 @@ def draw_clicked_circle(clicked_skycoord):
 
 def draw_translated_line():
     global ax3, ax_los
-    if ax1.axes.title.get_text().split(' ', 1)[0] == other_map:
+    if ax1_map_name == other_map:
         ax_lim = ax1.axis()
-        ax_los = ax1.plot_coord(line_coords, color='g')
+        ax_los = ax1.plot_coord(line_coords, color='g', picker=5)
         ax1.axis(ax_lim)
     else:
         ax_lim = ax2.axis()
@@ -157,7 +157,6 @@ def on_mouse_move(event):
             instrument_name = event.inaxes.title.get_text().split(' ', 1)[0]
             if instrument_name == other_map:
                 closest_point = get_closest_line_of_sight_point(event)
-                draw_clicked_3d_point(closest_point)
 
 
 def get_closest_line_of_sight_point(event):
@@ -167,23 +166,24 @@ def get_closest_line_of_sight_point(event):
     return closest_point
 
 
-def draw_clicked_3d_point(closest_point):
-    print(closest_point)
-    ax3.set_position((closest_point.x, closest_point.y))
-    plt.draw()
-
-
 def pick_los_point(event):
     if isinstance(event.artist, Line2D):
         index = int(np.median(event.ind))
         skycoord_3d = line_coords[index]
+        draw_3d_points(skycoord_3d)
+
+
+def draw_3d_points(skycoord_3d):
+    skycoord_3d_in_other_map = skycoord_3d.transform_to(maps[other_map].coordinate_frame)
+
+    if ax1_map_name == other_map:
         ax2.plot_coord(skycoord_3d, color='blue', marker='o')
-
-        skycoord_3d_in_other_map = skycoord_3d.transform_to(maps[other_map].coordinate_frame)
         ax1.plot_coord(skycoord_3d_in_other_map, color='blue', marker='o')
-        plt.draw()
+    else:
+        ax1.plot_coord(skycoord_3d, color='blue', marker='o')
+        ax2.plot_coord(skycoord_3d_in_other_map, color='blue', marker='o')
 
-        pass
+    plt.draw()
 
 cid1 = fig.canvas.mpl_connect('button_press_event', onclick)
 #cid2 = fig.canvas.mpl_connect('motion_notify_event', on_mouse_move)
