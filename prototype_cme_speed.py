@@ -22,6 +22,8 @@ from sunpy.net import Fido, attrs as a
 from shapely.geometry import LineString, Point
 from sympy import Point3D, Line3D
 
+from matplotlib.lines import Line2D
+
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -121,7 +123,7 @@ def translate_skycoord_to_other_map(clicked_skycoord):
     global line_coords
     #point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * np.linspace(200, 213, 14) * u.solRad)
     point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * np.linspace(0.5, 1.5, 1e6) * u.AU)
-    line_coords = point_to_line.transform_to(Helioprojective(observer=maps[other_map].coordinate_frame.observer))
+    line_coords = point_to_line.transform_to(maps[other_map].coordinate_frame)
 
 
 def draw_clicked_circle(clicked_skycoord):
@@ -135,13 +137,13 @@ def draw_translated_line():
     global ax3
     if ax1.axes.title.get_text().split(' ', 1)[0] == other_map:
         ax_lim = ax1.axis()
-        ax1.plot_coord(line_coords, color='g')
+        bla = ax1.plot_coord(line_coords, color='g')
         ax1.axis(ax_lim)
     else:
         ax_lim = ax2.axis()
-        ax2.plot_coord(line_coords, color='g')
+        bla = ax2.plot_coord(line_coords, color='g', pickradius=5)
         ax2.axis(ax_lim)
-    ax3 = plt.annotate(' ', (0, 0),
+    ax3 = plt.annotate(' ', (0, 0),  # This circle is to show which nearest point on the line the user is hovering over
                        xycoords='data',
                        bbox=dict(boxstyle="circle", edgecolor="y", facecolor='None'),
                        axes=ax2)  # TODO: Change ax2 to whichever is relevant
@@ -149,29 +151,29 @@ def draw_translated_line():
 
 
 def get_3d_position(clicked_skycoord):
-    # line2 = clicked_skycoord.realize_frame(clicked_skycoord.spherical * [0.5, 1.5] * u.km)
-    # p1 = Point3D(line2.cartesian.x.to(u.solRad).value[0], line2.cartesian.y.to(u.solRad).value[0], line2.cartesian.z.to(u.solRad).value[0])
-    # p2 = Point3D(line2.cartesian.x.to(u.solRad).value[1], line2.cartesian.y.to(u.solRad).value[1], line2.cartesian.z.to(u.solRad).value[1])
-    # p3 = Point3D(line_coords.cartesian.x.to(u.solRad).value[0], line_coords.cartesian.y.to(u.solRad).value[0], line_coords.cartesian.z.to(u.solRad).value[0])
-    # p4 = Point3D(line_coords.cartesian.x.to(u.solRad).value[1], line_coords.cartesian.y.to(u.solRad).value[1], line_coords.cartesian.z.to(u.solRad).value[1])
-    # sym_line_of_sight = Line3D(p3, p4)
-    # point_3d = sym_line_of_sight.projection(p1)
-    # point_3d = point_3d.evalf()  # convert from rational ratio to float
-    # skycoord_3d = SkyCoord(float(point_3d.x), float(point_3d.y), float(point_3d.z), unit=u.solRad, representation_type='cartesian', frame=maps[other_map].coordinate_frame)
+    line2 = clicked_skycoord.realize_frame(clicked_skycoord.spherical * [0.5, 1.5] * u.km)
+    p1 = Point3D(line2.cartesian.x.to(u.solRad).value[0], line2.cartesian.y.to(u.solRad).value[0], line2.cartesian.z.to(u.solRad).value[0])
+    p2 = Point3D(line2.cartesian.x.to(u.solRad).value[1], line2.cartesian.y.to(u.solRad).value[1], line2.cartesian.z.to(u.solRad).value[1])
+    p3 = Point3D(line_coords.cartesian.x.to(u.solRad).value[0], line_coords.cartesian.y.to(u.solRad).value[0], line_coords.cartesian.z.to(u.solRad).value[0])
+    p4 = Point3D(line_coords.cartesian.x.to(u.solRad).value[1], line_coords.cartesian.y.to(u.solRad).value[1], line_coords.cartesian.z.to(u.solRad).value[1])
+    sym_line_of_sight = Line3D(p3, p4)
+    point_3d = sym_line_of_sight.projection(p1)
+    point_3d = point_3d.evalf()  # convert from rational ratio to float
+    skycoord_3d = SkyCoord(float(point_3d.x), float(point_3d.y), float(point_3d.z), unit=u.solRad, representation_type='cartesian', frame=maps[other_map].coordinate_frame)  # TODO: Should this be frame=maps[clicked_map]?
 
-    skycoord_3d = SkyCoord(line_coords[480000])
+    #skycoord_3d = SkyCoord(line_coords[480000])  # Sanity test -- TODO: Move to actual test
     return skycoord_3d
 
 
 def draw_3d_point(skycoord_3d):
-    skycoord_3d_in_clicked_map = skycoord_3d.transform_to(maps[clicked_map].coordinate_frame)
+    skycoord_3d_in_other_map = skycoord_3d.transform_to(maps[other_map].coordinate_frame)
 
     if ax1.axes.title.get_text().split(' ', 1)[0] == clicked_map:
-        ax1.plot_coord(skycoord_3d_in_clicked_map, color='blue', marker='o')
-        ax2.plot_coord(skycoord_3d, color='blue', marker='o')
-    else:
-        ax2.plot_coord(skycoord_3d_in_clicked_map, color='blue', marker='o')
         ax1.plot_coord(skycoord_3d, color='blue', marker='o')
+        ax2.plot_coord(skycoord_3d_in_other_map, color='blue', marker='o')
+    else:
+        ax2.plot_coord(skycoord_3d, color='blue', marker='o')
+        ax1.plot_coord(skycoord_3d_in_other_map, color='blue', marker='o')
     plt.draw()
 
 
