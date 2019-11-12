@@ -1,85 +1,65 @@
 # -*- coding: utf-8 -*-
 """
-===========================================
-Drawing the AIA limb on a STEREO EUVI image
-===========================================
-
-In this example we use a STEREO-B and an SDO image to demonstrate how to
-overplot the limb as seen by AIA on an EUVI-B image. Then we overplot the AIA
-coordinate grid on the STEREO image.
+========================================
+Prototyping CME speed determination tool
+========================================
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Button
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 
 import sunpy.map
 import sunpy.coordinates.wcs_utils
-from sunpy.coordinates.frames import Helioprojective
 from sunpy.net import Fido, attrs as a
-
-from shapely.geometry import LineString, Point
-from sympy import Point3D, Line3D
 
 from matplotlib.lines import Line2D
 
 import warnings
 warnings.filterwarnings('ignore')
 
-##############################################################################
-# The first step is to download some data, we are going to get an image from
-# early 2011 when the STEREO spacecraft were roughly 90 deg separated from the
-# Earth.
+# Find some data to download
 stereo = (a.vso.Source('STEREO_B') &
           a.Instrument('EUVI') &
-          a.Time('2011-01-01', '2011-01-01T00:10:00'))
+          a.Time('2011-01-01T00:14:00', '2011-01-01T03:00:00'))
 
-aia = (a.Instrument('AIA') &
+aia = (a.Instrument('SWAP') &
        a.vso.Sample(24 * u.hour) &
-       a.Time('2011-01-01', '2011-01-02'))
+       a.Time('2011-01-01T00:14:00', '2011-01-01T03:00:00'))
 
-wave = a.Wavelength(30 * u.nm, 31 * u.nm)
+wave = a.Wavelength(17 * u.nm, 18 * u.nm)
 result = Fido.search(wave, aia | stereo)
 
-###############################################################################
 # Let's inspect the result
 print(result)
 
-##############################################################################
 # and download the files
 downloaded_files = Fido.fetch(result)
 print(downloaded_files)
 
-##############################################################################
 # Let's create a dictionary with the two maps, which we crop to full disk.
-maps = {m.name.split(' ', 1)[0]: m.submap(SkyCoord([-1100, 1100], [-1100, 1100],
-                                                   unit=u.arcsec, frame=m.coordinate_frame))
-        for m in sunpy.map.Map(downloaded_files)}
+#maps = {m.name.split(' ', 1)[0]: m for m in sunpy.map.Map(downloaded_files)}
+maps = {m.name.split(' ', 1)[1]: m for m in sunpy.map.Map(downloaded_files)}  # TODO: load the two instruments into different lists or dictionaries or maps (if those can be concatenated) instead of into a single dictionary
 
-##############################################################################
-# Next, let's calculate points on the limb in the AIA image for the half that
-# can be seen from STEREO's point of view.
-
-r = maps['AIA'].rsun_obs - 1 * u.arcsec  # remove one arcsec so it's on disk.
-# Adjust the following range if you only want to plot on STEREO_A
-th = np.linspace(-180 * u.deg, 0 * u.deg)
-x = r * np.sin(th)
-y = r * np.cos(th)
-coords = SkyCoord(x, y, frame=maps['AIA'].coordinate_frame)
-
+# Prepare button
+icon_next = plt.imread('https://i.imgur.com/zk94EAK.png')
+icon_done = plt.imread("https://i.imgur.com/jHGPyFy.png")
 
 ##############################################################################
 # Now, let's plot both maps
 
 fig = plt.figure(figsize=(10, 4))
-ax1 = fig.add_subplot(1, 2, 1, projection=maps['AIA'])
-maps['AIA'].plot(axes=ax1)
+ax1 = fig.add_subplot(1, 2, 1, projection=maps['SWAP'])
+maps['SWAP'].plot(axes=ax1)
 ax1_map_name = ax1.axes.title.get_text().split(' ', 1)[0]
 
 ax2 = fig.add_subplot(1, 2, 2, projection=maps['EUVI-B'])
 maps['EUVI-B'].plot(axes=ax2)
 
+# Setup initial interaction parameters
+is_last_map = False
 line_of_sight_is_defined = False
 
 
@@ -168,6 +148,23 @@ def draw_3d_points(skycoord_3d):
     plt.draw()
 
 
+def next_map_clicked(event):
+    if is_last_map:
+        button_axes.images[0].set_data(icon_done)
+        fig.canvas.draw_idle()
+    else:
+        load_new_maps()
+
+
+def load_new_maps():
+    pass
+
+
 cid1 = fig.canvas.mpl_connect('button_press_event', onclick)
 fig.canvas.mpl_connect('pick_event', pick_los_point)
+
+button_axes = plt.axes([0.83, 0.04, 0.22, 0.22])
+start_button = Button(button_axes, '', image=icon_next)
+start_button.on_clicked(next_map)
+
 plt.show()
