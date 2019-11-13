@@ -58,12 +58,11 @@ icon_done = plt.imread("https://i.imgur.com/jHGPyFy.png")
 # Now, let's plot both maps
 
 fig = plt.figure(figsize=(10, 4))
-ax1 = fig.add_subplot(1, 2, 1, projection=maps_left[0])
-maps_left[0].plot(axes=ax1)
-ax1_map_name = ax1.axes.title.get_text().split(' ', 1)[0]
+ax_left = fig.add_subplot(1, 2, 1, projection=maps_left[0])
+maps_left[0].plot(axes=ax_left)
 
-ax2 = fig.add_subplot(1, 2, 2, projection=maps_right[0])
-maps_right[0].plot(axes=ax2)
+ax_right = fig.add_subplot(1, 2, 2, projection=maps_right[0])
+maps_right[0].plot(axes=ax_right)
 
 # Setup initial interaction parameters
 is_last_map = False
@@ -111,20 +110,20 @@ def translate_skycoord_to_other_map(clicked_skycoord):
 
 def draw_clicked_circle(clicked_skycoord):
     if clicked_map == maps_left[map_sequence_index]:
-        ax1.plot_coord(clicked_skycoord, color='g', marker='o', fillstyle='none')
+        ax_left.plot_coord(clicked_skycoord, color='g', marker='o', fillstyle='none')
     else:
-        ax2.plot_coord(clicked_skycoord, color='g', marker='o', fillstyle='none')
+        ax_right.plot_coord(clicked_skycoord, color='g', marker='o', fillstyle='none')
 
 
 def draw_translated_line():
     if clicked_map == maps_right[map_sequence_index]:
-        ax_lim = ax1.axis()
-        ax1.plot_coord(line_coords, color='g', picker=5)
-        ax1.axis(ax_lim)
+        ax_lim = ax_left.axis()
+        ax_left.plot_coord(line_coords, color='g', picker=5)
+        ax_left.axis(ax_lim)
     else:
-        ax_lim = ax2.axis()
-        ax2.plot_coord(line_coords, color='g', picker=5)
-        ax2.axis(ax_lim)
+        ax_lim = ax_right.axis()
+        ax_right.plot_coord(line_coords, color='g', picker=5)
+        ax_right.axis(ax_lim)
     plt.draw()
 
 
@@ -147,11 +146,11 @@ def draw_3d_points(skycoord_3d):
     skycoord_3d_in_other_map = skycoord_3d.transform_to(other_map.coordinate_frame)
 
     if clicked_map == maps_right[map_sequence_index]:
-        ax2.plot_coord(skycoord_3d, color='blue', marker='o')
-        ax1.plot_coord(skycoord_3d_in_other_map, color='blue', marker='o')
+        ax_right.plot_coord(skycoord_3d, color='blue', marker='o')
+        ax_left.plot_coord(skycoord_3d_in_other_map, color='blue', marker='o')
     else:
-        ax1.plot_coord(skycoord_3d, color='blue', marker='o')
-        ax2.plot_coord(skycoord_3d_in_other_map, color='blue', marker='o')
+        ax_left.plot_coord(skycoord_3d, color='blue', marker='o')
+        ax_right.plot_coord(skycoord_3d_in_other_map, color='blue', marker='o')
 
     plt.draw()
 
