@@ -57,6 +57,11 @@ icon_done = plt.imread("https://i.imgur.com/jHGPyFy.png")
 ##############################################################################
 # Now, let's plot both maps
 
+
+def which_map_on_left():
+    pass
+
+
 fig = plt.figure(figsize=(10, 4))
 ax_left = fig.add_subplot(1, 2, 1, projection=maps_left[0])
 maps_left[0].plot(axes=ax_left)
@@ -68,6 +73,9 @@ maps_right[0].plot(axes=ax_right)
 is_last_map = False
 map_sequence_index = 0
 line_of_sight_is_defined = False
+
+# Main return value
+skycoord_3d_array = []  # or np.array?
 
 
 def onclick(event):
@@ -104,7 +112,7 @@ def get_clicked_skycoord(event):
 
 def translate_skycoord_to_other_map(clicked_skycoord):
     global line_coords
-    point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * np.linspace(0.9, 1.1, 1e6) * u.AU)
+    point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * np.linspace(0, 1000, 1e6) * u.solRad)
     line_coords = point_to_line.transform_to(other_map.coordinate_frame)
 
 
@@ -135,7 +143,10 @@ def closeout_clicks(event):
 def pick_los_point(event):
     if isinstance(event.artist, Line2D):
         index = int(np.median(event.ind))
-        skycoord_3d = line_coords[index]
+        skycoord_3d = SkyCoord(line_coords[index])
+
+        skycoord_3d_array.append(skycoord_3d.transform_to(sunpy.coordinates.frames.HeliographicStonyhurst))
+
         draw_3d_points(skycoord_3d)
 
         print(skycoord_3d)  # TODO: need to pass this to another function that'll do something with it
@@ -156,22 +167,40 @@ def draw_3d_points(skycoord_3d):
 
 
 def next_map_clicked(event):
-    if is_last_map:
-        button_axes.images[0].set_data(icon_done)
-        fig.canvas.draw_idle()
-    else:
+    global map_sequence_index, is_last_map
+
+    if not is_last_map:
+        map_sequence_index += 1
+        if map_sequence_index == min(len(maps_left), len(maps_right)) - 1:
+            is_last_map = True
+
         load_new_maps()
+        clear_clicked_annotations()
 
 
 def load_new_maps():
+    maps_left[map_sequence_index].plot(axes=ax_left)
+    maps_right[map_sequence_index].plot(axes=ax_right)
+
+
+def clear_clicked_annotations():
+    pass
+
+
+def done_clicked(event):
+    print(skycoord_3d_array)  # eventually want to return this as the main return of this program?
     pass
 
 
 cid1 = fig.canvas.mpl_connect('button_press_event', onclick)
 fig.canvas.mpl_connect('pick_event', pick_los_point)
 
-button_axes = plt.axes([0.83, 0.04, 0.22, 0.22])
-button = Button(button_axes, '', image=icon_next)
-button.on_clicked(next_map_clicked)
+ax_button_next = plt.axes([0.83, 0.28, 0.22, 0.22])
+button_next = Button(ax_button_next, '', image=icon_next)
+button_next.on_clicked(next_map_clicked)
+
+ax_button_done = plt.axes([0.83, 0.04, 0.22, 0.22])
+button_done = Button(ax_button_done, '', image=icon_done)
+button_done.on_clicked(done_clicked)
 
 plt.show()
