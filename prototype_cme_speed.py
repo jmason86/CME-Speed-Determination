@@ -20,6 +20,8 @@ from matplotlib.lines import Line2D
 import warnings
 warnings.filterwarnings('ignore')
 
+# Define Sun-Earth Line (SEL)
+
 # Find some data to download
 stereo = (a.vso.Source('STEREO_B') &
           a.Instrument('EUVI') &
@@ -30,18 +32,23 @@ aia = (a.Instrument('SWAP') &
        a.Time('2011-01-01T00:14:00', '2011-01-01T03:00:00'))
 
 wave = a.Wavelength(17 * u.nm, 18 * u.nm)
-result = Fido.search(wave, aia | stereo)
+result_left = Fido.search(wave, aia)
+result_right = Fido.search(wave, stereo)
 
 # Let's inspect the result
-print(result)
+print(result_left)
+print(result_right)
 
 # and download the files
-downloaded_files = Fido.fetch(result)
-print(downloaded_files)
+downloaded_files_left = Fido.fetch(result_left, progress=False)
+downloaded_files_right = Fido.fetch(result_right, progress=False)
 
 # Let's create a dictionary with the two maps, which we crop to full disk.
 #maps = {m.name.split(' ', 1)[0]: m for m in sunpy.map.Map(downloaded_files)}
-maps = {m.name.split(' ', 1)[1]: m for m in sunpy.map.Map(downloaded_files)}  # TODO: load the two instruments into different lists or dictionaries or maps (if those can be concatenated) instead of into a single dictionary
+#maps = {m.name.split(' ', 1)[1]: m for m in sunpy.map.Map(downloaded_files)}  # TODO: load the two instruments into different lists or dictionaries or maps (if those can be concatenated) instead of into a single dictionary
+maps_left = sunpy.map.Map(downloaded_files_left, sequence=True)
+maps_right = sunpy.map.Map(downloaded_files_right, sequence=True)
+
 
 # Prepare button
 icon_next = plt.imread('https://i.imgur.com/zk94EAK.png')
@@ -51,22 +58,22 @@ icon_done = plt.imread("https://i.imgur.com/jHGPyFy.png")
 # Now, let's plot both maps
 
 fig = plt.figure(figsize=(10, 4))
-ax1 = fig.add_subplot(1, 2, 1, projection=maps['SWAP'])
-maps['SWAP'].plot(axes=ax1)
+ax1 = fig.add_subplot(1, 2, 1, projection=maps_left[0])
+maps_left[0].plot(axes=ax1)
 ax1_map_name = ax1.axes.title.get_text().split(' ', 1)[0]
 
-ax2 = fig.add_subplot(1, 2, 2, projection=maps['EUVI-B'])
-maps['EUVI-B'].plot(axes=ax2)
+ax2 = fig.add_subplot(1, 2, 2, projection=maps_right[0])
+maps_right[0].plot(axes=ax2)
 
 # Setup initial interaction parameters
 is_last_map = False
+map_sequence_index = 0
 line_of_sight_is_defined = False
 
 
 def onclick(event):
-    global clicked_map, other_map, line_of_sight_is_defined
-    clicked_map = which_map_clicked(event)
-    other_map = which_is_other_map()
+    global line_of_sight_is_defined
+    which_map_clicked(event)
     clicked_skycoord = get_clicked_skycoord(event)
     draw_clicked_circle(clicked_skycoord)
 
@@ -81,35 +88,36 @@ def onclick(event):
 
 
 def which_map_clicked(event):
-    instrument_name = event.inaxes.title.get_text().split(' ', 1)[0]
-    return instrument_name
-
-
-def which_is_other_map():
-    return np.setdiff1d(list(maps.keys()), [clicked_map])[0]
+    global clicked_map, other_map
+    if event.inaxes.colNum == 0:
+        clicked_map = maps_left[map_sequence_index]
+        other_map = maps_right[map_sequence_index]
+    else:
+        clicked_map = maps_right[map_sequence_index]
+        other_map = maps_left[map_sequence_index]
 
 
 def get_clicked_skycoord(event):
     ix, iy = event.xdata, event.ydata
-    clicked_skycoord = maps[clicked_map].pixel_to_world(ix * u.pix, iy * u.pix)
+    clicked_skycoord = clicked_map.pixel_to_world(ix * u.pix, iy * u.pix)
     return clicked_skycoord
 
 
 def translate_skycoord_to_other_map(clicked_skycoord):
     global line_coords
     point_to_line = clicked_skycoord.realize_frame(clicked_skycoord.spherical * np.linspace(0.9, 1.1, 1e6) * u.AU)
-    line_coords = point_to_line.transform_to(maps[other_map].coordinate_frame)
+    line_coords = point_to_line.transform_to(other_map.coordinate_frame)
 
 
 def draw_clicked_circle(clicked_skycoord):
-    if ax1_map_name == clicked_map:
+    if clicked_map == maps_left[map_sequence_index]:
         ax1.plot_coord(clicked_skycoord, color='g', marker='o', fillstyle='none')
     else:
         ax2.plot_coord(clicked_skycoord, color='g', marker='o', fillstyle='none')
 
 
 def draw_translated_line():
-    if ax1_map_name == other_map:
+    if clicked_map == maps_right[map_sequence_index]:
         ax_lim = ax1.axis()
         ax1.plot_coord(line_coords, color='g', picker=5)
         ax1.axis(ax_lim)
@@ -136,9 +144,9 @@ def pick_los_point(event):
 
 
 def draw_3d_points(skycoord_3d):
-    skycoord_3d_in_other_map = skycoord_3d.transform_to(maps[other_map].coordinate_frame)
+    skycoord_3d_in_other_map = skycoord_3d.transform_to(other_map.coordinate_frame)
 
-    if ax1_map_name == other_map:
+    if clicked_map == maps_right[map_sequence_index]:
         ax2.plot_coord(skycoord_3d, color='blue', marker='o')
         ax1.plot_coord(skycoord_3d_in_other_map, color='blue', marker='o')
     else:
@@ -164,7 +172,7 @@ cid1 = fig.canvas.mpl_connect('button_press_event', onclick)
 fig.canvas.mpl_connect('pick_event', pick_los_point)
 
 button_axes = plt.axes([0.83, 0.04, 0.22, 0.22])
-start_button = Button(button_axes, '', image=icon_next)
-start_button.on_clicked(next_map)
+button = Button(button_axes, '', image=icon_next)
+button.on_clicked(next_map_clicked)
 
 plt.show()
