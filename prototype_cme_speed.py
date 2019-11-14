@@ -20,8 +20,6 @@ from matplotlib.lines import Line2D
 import warnings
 warnings.filterwarnings('ignore')
 
-# Define Sun-Earth Line (SEL)
-
 # Find some data to download
 stereo = (a.vso.Source('STEREO_B') &
           a.Instrument('EUVI') &
@@ -35,33 +33,28 @@ wave = a.Wavelength(17 * u.nm, 18 * u.nm)
 result_left = Fido.search(wave, aia)
 result_right = Fido.search(wave, stereo)
 
-# Let's inspect the result
-print(result_left)
-print(result_right)
-
 # and download the files
 downloaded_files_left = Fido.fetch(result_left, progress=False)
 downloaded_files_right = Fido.fetch(result_right, progress=False)
 
-# Let's create a dictionary with the two maps, which we crop to full disk.
-#maps = {m.name.split(' ', 1)[0]: m for m in sunpy.map.Map(downloaded_files)}
-#maps = {m.name.split(' ', 1)[1]: m for m in sunpy.map.Map(downloaded_files)}  # TODO: load the two instruments into different lists or dictionaries or maps (if those can be concatenated) instead of into a single dictionary
-maps_left = sunpy.map.Map(downloaded_files_left, sequence=True)
-maps_right = sunpy.map.Map(downloaded_files_right, sequence=True)
-
-
-# Prepare button
-icon_next = plt.imread('https://i.imgur.com/zk94EAK.png')
-icon_done = plt.imread("https://i.imgur.com/jHGPyFy.png")
-
-##############################################################################
-# Now, let's plot both maps
+# Load the maps into two arrays that'll be plotted side by side, with left/right corresponding to spacecraft position
 
 
 def which_map_on_left():
-    pass
+    global maps_left, maps_right
+    if maps_left[0].wcs.heliographic_observer.lon.min() > maps_right[0].wcs.heliographic_observer.lon.min():
+        maps_left, maps_right = maps_right, maps_left
 
 
+maps_left = sunpy.map.Map(downloaded_files_left, sequence=True)
+maps_right = sunpy.map.Map(downloaded_files_right, sequence=True)
+which_map_on_left()
+
+# Prepare buttons
+icon_next = plt.imread('https://i.imgur.com/zk94EAK.png')
+icon_done = plt.imread("https://i.imgur.com/jHGPyFy.png")
+
+# Now, let's plot both maps
 fig = plt.figure(figsize=(10, 4))
 ax_left = fig.add_subplot(1, 2, 1, projection=maps_left[0])
 maps_left[0].plot(axes=ax_left)
@@ -82,9 +75,9 @@ def onclick(event):
     global line_of_sight_is_defined
     which_map_clicked(event)
     clicked_skycoord = get_clicked_skycoord(event)
-    draw_clicked_circle(clicked_skycoord)
 
     if not line_of_sight_is_defined:
+        draw_clicked_circle(clicked_skycoord)
         translate_skycoord_to_other_map(clicked_skycoord)
         draw_translated_line()
         line_of_sight_is_defined = True
@@ -118,9 +111,10 @@ def translate_skycoord_to_other_map(clicked_skycoord):
 
 def draw_clicked_circle(clicked_skycoord):
     if clicked_map == maps_left[map_sequence_index]:
-        ax_left.plot_coord(clicked_skycoord, color='g', marker='o', fillstyle='none')
+        ax_left.plot_coord(clicked_skycoord, color='g', marker='o', markersize=8, fillstyle='none')
     else:
-        ax_right.plot_coord(clicked_skycoord, color='g', marker='o', fillstyle='none')
+        ax_right.plot_coord(clicked_skycoord, color='g', marker='o', markersize=8, fillstyle='none')
+    plt.draw()  # FIXME: Figure out why this only works for the first map in the sequence
 
 
 def draw_translated_line():
@@ -136,20 +130,18 @@ def draw_translated_line():
 
 
 def closeout_clicks(event):
-    if line_of_sight_is_defined:
-        fig.canvas.mpl_disconnect(cid1)
+    #if is_last_map:
+    #    fig.canvas.mpl_disconnect(cid1)
+    pass
 
 
 def pick_los_point(event):
     if isinstance(event.artist, Line2D):
         index = int(np.median(event.ind))
         skycoord_3d = SkyCoord(line_coords[index])
-
         skycoord_3d_array.append(skycoord_3d.transform_to(sunpy.coordinates.frames.HeliographicStonyhurst))
-
+        print(skycoord_3d_array[-1])
         draw_3d_points(skycoord_3d)
-
-        print(skycoord_3d)  # TODO: need to pass this to another function that'll do something with it
     return True
 
 
@@ -167,7 +159,7 @@ def draw_3d_points(skycoord_3d):
 
 
 def next_map_clicked(event):
-    global map_sequence_index, is_last_map
+    global map_sequence_index, is_last_map, line_of_sight_is_defined
 
     if not is_last_map:
         map_sequence_index += 1
@@ -176,6 +168,7 @@ def next_map_clicked(event):
 
         load_new_maps()
         clear_clicked_annotations()
+        line_of_sight_is_defined = False
 
 
 def load_new_maps():
@@ -184,12 +177,14 @@ def load_new_maps():
 
 
 def clear_clicked_annotations():
+    del ax_left.lines[:]
+    del ax_right.lines[:]
+    plt.draw()
     pass
 
 
 def done_clicked(event):
     print(skycoord_3d_array)  # eventually want to return this as the main return of this program?
-    pass
 
 
 cid1 = fig.canvas.mpl_connect('button_press_event', onclick)
