@@ -10,6 +10,7 @@ from matplotlib.widgets import Button
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
+from astropy import coordinates
 
 import sunpy.map
 import sunpy.coordinates.wcs_utils
@@ -20,18 +21,21 @@ from matplotlib.lines import Line2D
 import warnings
 warnings.filterwarnings('ignore')
 
-# Find some data to download
-stereo = (a.vso.Source('STEREO_B') &
-          a.Instrument('EUVI') &
-          a.Time('2011-01-01T00:14:00', '2011-01-01T03:00:00'))
+start_time = '2012-07-23T02:30:00'
+end_time = '2012-07-23T05:30:00'
 
-aia = (a.Instrument('SWAP') &
-       a.vso.Sample(24 * u.hour) &
-       a.Time('2011-01-01T00:14:00', '2011-01-01T03:00:00'))
+# Find some data to download
+off_sun_earth_line_imager = (a.vso.Source('STEREO_A') &
+                             a.Instrument('EUVI') &
+                             a.Time(start_time, end_time))
+
+sun_earth_line_imager = (a.Instrument('SWAP') &
+                         #a.Detector('C2') &
+                         a.Time(start_time, end_time))
 
 wave = a.Wavelength(17 * u.nm, 18 * u.nm)
-result_left = Fido.search(wave, aia)
-result_right = Fido.search(wave, stereo)
+result_left = Fido.search(wave, sun_earth_line_imager)
+result_right = Fido.search(wave, off_sun_earth_line_imager)
 
 # and download the files
 downloaded_files_left = Fido.fetch(result_left, progress=False)
@@ -49,6 +53,35 @@ def which_map_on_left():
 maps_left = sunpy.map.Map(downloaded_files_left, sequence=True)
 maps_right = sunpy.map.Map(downloaded_files_right, sequence=True)
 which_map_on_left()
+
+
+def temporally_align_map_sequences():
+    global maps_left, maps_right
+    maps_driver, maps_to_subsample = which_maps_drive_vs_drop()
+    maps_subsampled = drop_extraneous_maps(maps_driver, maps_to_subsample)
+    if maps_driver == maps_left:
+        maps_right = maps_subsampled
+    else:
+        maps_left = maps_subsampled
+
+
+def which_maps_drive_vs_drop():
+    maps_driver = min(maps_left, maps_right, key=len)
+    maps_to_subsample = max(maps_left, maps_right, key=len)
+    return maps_driver, maps_to_subsample
+
+
+def drop_extraneous_maps(maps_driver, maps_to_subsample):
+    indices_to_keep = []
+    for map_driver in maps_driver:
+        delta_ts = []
+        for i in range(len(maps_to_subsample)):
+            delta_ts.append(map_driver.date - maps_to_subsample[i].date)
+        indices_to_keep.append(delta_ts.index(min(delta_ts, key=abs)))
+    tmp = [maps_to_subsample[i] for i in indices_to_keep]
+    return sunpy.map.MapSequence(tmp)
+
+temporally_align_map_sequences()
 
 # Now, let's plot both maps
 fig = plt.figure(figsize=(10, 4))
@@ -69,6 +102,9 @@ skycoord_3d_array = []  # or np.array?
 
 def onclick(event):
     global line_of_sight_is_defined
+    if is_not_plot_clicked(event):
+        return False
+
     which_map_clicked(event)
     clicked_skycoord = get_clicked_skycoord(event)
 
@@ -81,6 +117,10 @@ def onclick(event):
     closeout_clicks(event)
 
     return True
+
+
+def is_not_plot_clicked(event):
+    return not hasattr(event.inaxes, 'colNum')
 
 
 def which_map_clicked(event):
@@ -181,6 +221,16 @@ def done_clicked(event):
     fig.canvas.mpl_disconnect(cid1)
     fig.canvas.mpl_disconnect(cid2)
     print(skycoord_3d_array)  # eventually want to return this as the main return of this program?
+
+    compute_kinematics()
+    plot_kinematics()
+
+
+def compute_kinematics():
+    sun_coord = coordinates.get_sun(maps_left[0].date)
+    distances = [skycoord_3d.separation_3d(sun_coord) for skycoord_3d in skycoord_3d_array]
+    print(distances)
+
 
 
 # Set up user click interactions
