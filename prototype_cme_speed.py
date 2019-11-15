@@ -214,7 +214,6 @@ def clear_clicked_annotations():
     del ax_left.lines[:]
     del ax_right.lines[:]
     plt.draw()
-    pass
 
 
 def done_clicked(event):
@@ -227,10 +226,38 @@ def done_clicked(event):
 
 
 def compute_kinematics():
-    sun_coord = coordinates.get_sun(maps_left[0].date)
-    distances = [skycoord_3d.separation_3d(sun_coord) for skycoord_3d in skycoord_3d_array]
+    global distances, speeds, accelerations
+    distances = compute_distances()
+    delta_t_sec = compute_delta_time()
+    speeds = compute_speeds(delta_t_sec)
+    accelerations = compute_accelerations(delta_t_sec)
     print(distances)
+    print(speeds)
+    print(accelerations)
 
+
+def compute_distances():
+    sun_coord = coordinates.get_sun(maps_left[0].date)
+    return [skycoord_3d.separation_3d(sun_coord) for skycoord_3d in skycoord_3d_array]
+
+
+def compute_delta_time():
+    obstime = [skycoord.obstime for skycoord in skycoord_3d_array]
+    delta_t = [t - obstime[0] for t in obstime]
+    return [dt.sec for dt in delta_t]
+
+
+def compute_speeds(delta_t_sec):
+    distance_values = [(distance.to(u.km)).value for distance in distances]
+    return np.gradient(distance_values, delta_t_sec) * (u.km / u.second)
+
+
+def compute_accelerations(delta_t_sec):
+    return np.gradient(speeds.value, delta_t_sec) * (u.km / u.second / u.second)
+
+
+def plot_kinematics():
+    pass
 
 
 # Set up user click interactions
