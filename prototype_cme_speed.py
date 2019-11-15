@@ -226,7 +226,7 @@ def done_clicked(event):
 
 
 def compute_kinematics():
-    global distances, speeds, accelerations
+    global distances, speeds, accelerations, delta_t_sec
     distances = compute_distances()
     delta_t_sec = compute_delta_time()
     speeds = compute_speeds(delta_t_sec)
@@ -257,7 +257,19 @@ def compute_accelerations(delta_t_sec):
 
 
 def plot_kinematics():
-    pass
+    fig2 = plt.figure(figsize=(10, 10))
+    ax_d = fig2.add_subplot(3, 1, 1)
+    plt.plot(delta_t_sec, [d.value for d in distances], axes=ax_d)
+    ax_s = fig2.add_subplot(3, 1, 2)
+    plt.plot(delta_t_sec, speeds.value, axes=ax_s)
+    ax_a = fig2.add_subplot(3, 1, 3)
+    plt.plot(delta_t_sec, accelerations.value, axes=ax_a)
+
+    ax_d.set_ylabel('height [R$_{\odot}$)]')
+    ax_s.set_ylabel('speed [km s$^{-1}$]')
+    ax_a.set_ylabel('acceleration [km s$^{-2}$]')
+    ax_a.set_xlabel('time [seconds since start]')
+
 
 
 # Set up user click interactions
