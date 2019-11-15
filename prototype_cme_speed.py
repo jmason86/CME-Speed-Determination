@@ -50,10 +50,6 @@ maps_left = sunpy.map.Map(downloaded_files_left, sequence=True)
 maps_right = sunpy.map.Map(downloaded_files_right, sequence=True)
 which_map_on_left()
 
-# Prepare buttons
-icon_next = plt.imread('https://i.imgur.com/zk94EAK.png')
-icon_done = plt.imread("https://i.imgur.com/jHGPyFy.png")
-
 # Now, let's plot both maps
 fig = plt.figure(figsize=(10, 4))
 ax_left = fig.add_subplot(1, 2, 1, projection=maps_left[0])
@@ -130,8 +126,6 @@ def draw_translated_line():
 
 
 def closeout_clicks(event):
-    #if is_last_map:
-    #    fig.canvas.mpl_disconnect(cid1)
     pass
 
 
@@ -184,17 +178,23 @@ def clear_clicked_annotations():
 
 
 def done_clicked(event):
+    fig.canvas.mpl_disconnect(cid1)
+    fig.canvas.mpl_disconnect(cid2)
     print(skycoord_3d_array)  # eventually want to return this as the main return of this program?
 
 
+# Set up user click interactions
 cid1 = fig.canvas.mpl_connect('button_press_event', onclick)
-fig.canvas.mpl_connect('pick_event', pick_los_point)
+cid2 = fig.canvas.mpl_connect('pick_event', pick_los_point)
 
-ax_button_next = plt.axes([0.83, 0.28, 0.22, 0.22])
+# Set up buttons
+icon_next = plt.imread('https://i.imgur.com/4bu7tvv.png')
+ax_button_next = plt.axes([0.89, 0.10, 0.10, 0.10])
 button_next = Button(ax_button_next, '', image=icon_next)
 button_next.on_clicked(next_map_clicked)
 
-ax_button_done = plt.axes([0.83, 0.04, 0.22, 0.22])
+icon_done = plt.imread("https://i.imgur.com/JBazCVv.png")
+ax_button_done = plt.axes([0.89, 0.01, 0.10, 0.10])
 button_done = Button(ax_button_done, '', image=icon_done)
 button_done.on_clicked(done_clicked)
 
