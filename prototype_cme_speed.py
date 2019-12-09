@@ -81,6 +81,7 @@ def drop_extraneous_maps(maps_driver, maps_to_subsample):
     tmp = [maps_to_subsample[i] for i in indices_to_keep]
     return sunpy.map.MapSequence(tmp)
 
+
 temporally_align_map_sequences()
 
 # Now, let's plot both maps
@@ -269,7 +270,6 @@ def plot_kinematics():
     ax_s.set_ylabel('speed [km s$^{-1}$]')
     ax_a.set_ylabel('acceleration [km s$^{-2}$]')
     ax_a.set_xlabel('time [seconds since start]')
-
 
 
 # Set up user click interactions
