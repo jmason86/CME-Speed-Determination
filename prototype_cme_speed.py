@@ -84,7 +84,7 @@ def drop_extraneous_maps(maps_driver, maps_to_subsample):
 
 temporally_align_map_sequences()
 
-# Now, let's plot both maps
+# Plot both maps
 fig = plt.figure(figsize=(10, 4))
 ax_left = fig.add_subplot(1, 2, 1, projection=maps_left[0])
 maps_left[0].plot(axes=ax_left)
@@ -92,13 +92,16 @@ maps_left[0].plot(axes=ax_left)
 ax_right = fig.add_subplot(1, 2, 2, projection=maps_right[0])
 maps_right[0].plot(axes=ax_right)
 
+# Indicate how many maps there are and which this is (e.g., 1/12)
+text_n_maps = plt.text(0.94, 0.2, '1/{}'.format(len(maps_left)), horizontalalignment='center', transform=fig.transFigure)
+
 # Setup initial interaction parameters
 is_last_map = False
 map_sequence_index = 0
 line_of_sight_is_defined = False
 
 # Main return value
-skycoord_3d_array = []  # or np.array?
+skycoord_3d_array = []
 
 
 def onclick(event):
@@ -203,6 +206,7 @@ def next_map_clicked(event):
 
         load_new_maps()
         clear_clicked_annotations()
+        update_map_counter()
         line_of_sight_is_defined = False
 
 
@@ -215,6 +219,10 @@ def clear_clicked_annotations():
     del ax_left.lines[:]
     del ax_right.lines[:]
     plt.draw()
+
+
+def update_map_counter():
+    text_n_maps.set_text('{0}/{1}'.format(map_sequence_index + 1, len(maps_left)))
 
 
 def done_clicked(event):
