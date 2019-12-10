@@ -95,6 +95,17 @@ maps_right[0].plot(axes=ax_right)
 # Indicate how many maps there are and which this is (e.g., 1/12)
 text_n_maps = plt.text(0.94, 0.2, '1/{}'.format(len(maps_left)), horizontalalignment='center', transform=fig.transFigure)
 
+# Prepare kinematic profile plot
+fig2, (ax_d, ax_s, ax_a) = plt.subplots(3, figsize=(10, 10))
+fig2.suptitle('Radial Kinematic Profiles')
+line_d, = ax_d.plot([], [], 'o-')
+ax_d.set_ylabel('height [R$_{\odot}$)]')
+line_s, = ax_s.plot([], [], 'o-')
+ax_s.set_ylabel('speed [km s$^{-1}$]')
+line_a, = ax_a.plot([], [], 'o-')
+ax_a.set_ylabel('acceleration [km s$^{-2}$]')
+ax_a.set_xlabel('time [seconds since start]')
+
 # Setup initial interaction parameters
 is_last_map = False
 map_sequence_index = 0
@@ -180,6 +191,10 @@ def pick_los_point(event):
         skycoord_3d_array.append(skycoord_3d.transform_to(sunpy.coordinates.frames.HeliographicStonyhurst))
         print(skycoord_3d_array[-1])
         draw_3d_points(skycoord_3d)
+
+        compute_kinematics()
+        plot_kinematics()
+        put_maps_figure_back_in_focus()
     return True
 
 
@@ -207,6 +222,7 @@ def next_map_clicked(event):
         load_new_maps()
         clear_clicked_annotations()
         update_map_counter()
+
         line_of_sight_is_defined = False
 
 
@@ -238,8 +254,8 @@ def compute_kinematics():
     global distances, speeds, accelerations, delta_t_sec
     distances = compute_distances()
     delta_t_sec = compute_delta_time()
-    speeds = compute_speeds(delta_t_sec)
-    accelerations = compute_accelerations(delta_t_sec)
+    speeds = compute_speeds()
+    accelerations = compute_accelerations()
     print(distances)
     print(speeds)
     print(accelerations)
@@ -256,28 +272,42 @@ def compute_delta_time():
     return [dt.sec for dt in delta_t]
 
 
-def compute_speeds(delta_t_sec):
-    distance_values = [(distance.to(u.km)).value for distance in distances]
-    return np.gradient(distance_values, delta_t_sec) * (u.km / u.second)
+def compute_speeds():
+    if map_sequence_index >= 1:
+        distance_values = [(distance.to(u.km)).value for distance in distances]
+        return np.gradient(distance_values, delta_t_sec) * (u.km / u.second)
+    else:
+        return None
 
 
-def compute_accelerations(delta_t_sec):
-    return np.gradient(speeds.value, delta_t_sec) * (u.km / u.second / u.second)
+def compute_accelerations():
+    if map_sequence_index >= 2:
+        return np.gradient(speeds.value, delta_t_sec) * (u.km / u.second / u.second)
+    else:
+        return None
 
 
 def plot_kinematics():
-    fig2 = plt.figure(figsize=(10, 10))
-    ax_d = fig2.add_subplot(3, 1, 1)
-    plt.plot(delta_t_sec, [d.value for d in distances], axes=ax_d)
-    ax_s = fig2.add_subplot(3, 1, 2)
-    plt.plot(delta_t_sec, speeds.value, axes=ax_s)
-    ax_a = fig2.add_subplot(3, 1, 3)
-    plt.plot(delta_t_sec, accelerations.value, axes=ax_a)
+    if distances is not None:
+        line_d.set_data(delta_t_sec, [d.value for d in distances])
+        ax_d.relim()
+        ax_d.autoscale_view()
+    if speeds is not None:
+        line_s.set_data(delta_t_sec, speeds.value)
+        ax_s.relim()
+        ax_s.autoscale_view()
+    if accelerations is not None:
+        line_a.set_data(delta_t_sec, accelerations.value)
+        ax_a.relim()
+        ax_a.autoscale_view()
 
-    ax_d.set_ylabel('height [R$_{\odot}$)]')
-    ax_s.set_ylabel('speed [km s$^{-1}$]')
-    ax_a.set_ylabel('acceleration [km s$^{-2}$]')
-    ax_a.set_xlabel('time [seconds since start]')
+    plt.show(block=False)
+    fig2.canvas.draw_idle()  # misnomer function -- actually triggers draw (.draw() doesn't work)
+
+
+def put_maps_figure_back_in_focus():
+    plt.figure(fig.number)
+    plt.get_current_fig_manager().show()
 
 
 # Set up user click interactions
@@ -285,6 +315,7 @@ cid1 = fig.canvas.mpl_connect('button_press_event', onclick)
 cid2 = fig.canvas.mpl_connect('pick_event', pick_los_point)
 
 # Set up buttons
+plt.figure(fig.number)  # Ensures the right figure will receive the buttons
 icon_next = plt.imread('https://i.imgur.com/4bu7tvv.png')
 ax_button_next = plt.axes([0.89, 0.10, 0.10, 0.10])
 button_next = Button(ax_button_next, '', image=icon_next)
