@@ -7,6 +7,8 @@ Prototyping CME speed determination tool
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
+from matplotlib.widgets import TextBox
+import matplotlib.colors as colors
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
@@ -22,7 +24,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 start_time = '2012-07-23T02:30:00'
-end_time = '2012-07-23T05:30:00'
+end_time = '2012-07-23T03:00:00'
+#end_time = '2012-07-23T05:30:00'
 
 # Find some data to download
 off_sun_earth_line_imager = (a.vso.Source('STEREO_A') &
@@ -87,9 +90,11 @@ temporally_align_map_sequences()
 # Plot both maps
 fig = plt.figure(figsize=(10, 4))
 ax_left = fig.add_subplot(1, 2, 1, projection=maps_left[0])
+maps_left[0].plot_settings['cmap'] = plt.get_cmap('Greys_r')
 maps_left[0].plot(axes=ax_left)
 
 ax_right = fig.add_subplot(1, 2, 2, projection=maps_right[0])
+maps_right[0].plot_settings['cmap'] = plt.get_cmap('Greys_r')
 maps_right[0].plot(axes=ax_right)
 
 # Indicate how many maps there are and which this is (e.g., 1/12)
@@ -228,6 +233,8 @@ def next_map_clicked(event):
 
 
 def load_new_maps():
+    maps_left[map_sequence_index].plot_settings['cmap'] = plt.get_cmap('Greys_r')
+    maps_right[map_sequence_index].plot_settings['cmap'] = plt.get_cmap('Greys_r')
     maps_left[map_sequence_index].plot(axes=ax_left)
     maps_right[map_sequence_index].plot(axes=ax_right)
 
@@ -240,6 +247,33 @@ def clear_clicked_annotations():
 
 def update_map_counter():
     text_n_maps.set_text('{0}/{1}'.format(map_sequence_index + 1, len(maps_left)))
+
+
+def power_clicked(text):
+    scaling = eval(text)
+    maps_left[map_sequence_index].plot_settings['norm'] = colors.PowerNorm(gamma=scaling)
+    maps_right[map_sequence_index].plot_settings['norm'] = colors.PowerNorm(gamma=scaling)
+
+    maps_left[map_sequence_index].plot(axes=ax_left)
+    maps_right[map_sequence_index].plot(axes=ax_right)
+    plt.draw()
+
+
+def log_clicked(text):
+    scaling = eval(text)
+    if scaling >= maps_left[map_sequence_index].max():
+        print('The input minimum for log scaling is too large for the left map. Try a smaller number.')
+        return
+    if scaling >= maps_right[map_sequence_index].max():
+        print('The input minimum for log scaling is too large for the right map. Try a smaller number.')
+        return
+
+    maps_left[map_sequence_index].plot_settings['norm'] = colors.LogNorm(scaling, maps_left[map_sequence_index].max())
+    maps_right[map_sequence_index].plot_settings['norm'] = colors.LogNorm(scaling, maps_right[map_sequence_index].max())
+
+    maps_left[map_sequence_index].plot(axes=ax_left)
+    maps_right[map_sequence_index].plot(axes=ax_right)
+    plt.draw()
 
 
 def done_clicked(event):
@@ -316,8 +350,19 @@ def put_maps_figure_back_in_focus():
 cid1 = fig.canvas.mpl_connect('button_press_event', onclick)
 cid2 = fig.canvas.mpl_connect('pick_event', pick_los_point)
 
+# Set up text inputs for intensity scaling
+plt.figure(fig.number)  # Ensures the right figure will receive the textboxes/buttons
+text_scaling = plt.text(0.94, 0.52, 'Intensity Scaling', horizontalalignment='center', transform=fig.transFigure)
+ax_textbox_power = plt.axes([0.96, 0.40, 0.03, 0.10])
+textbox_power = TextBox(ax_textbox_power, 'x$^n$', initial='1')
+textbox_power.on_submit(power_clicked)
+
+ax_textbox_log = plt.axes([0.96, 0.30, 0.03, 0.10])
+textbox_log = TextBox(ax_textbox_log, 'log(n, max)', initial='N/A')
+textbox_log.on_submit(log_clicked)
+
+
 # Set up buttons
-plt.figure(fig.number)  # Ensures the right figure will receive the buttons
 icon_next = plt.imread('https://i.imgur.com/4bu7tvv.png')
 ax_button_next = plt.axes([0.89, 0.10, 0.10, 0.10])
 button_next = Button(ax_button_next, '', image=icon_next)
