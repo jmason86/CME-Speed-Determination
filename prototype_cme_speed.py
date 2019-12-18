@@ -6,8 +6,7 @@ Prototyping CME speed determination tool
 """
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Button
-from matplotlib.widgets import TextBox
+from matplotlib.widgets import Button, TextBox,  CheckButtons
 import matplotlib.colors as colors
 
 import astropy.units as u
@@ -116,6 +115,8 @@ ax_a.set_xlabel('time [seconds since start]')
 is_last_map = False
 map_sequence_index = 0
 line_of_sight_is_defined = False
+is_checked_base_difference = False
+is_checked_running_difference = False
 
 # Main return value
 skycoord_3d_array = []
@@ -235,8 +236,14 @@ def next_map_clicked(event):
 def load_new_maps():
     maps_left[map_sequence_index].plot_settings['cmap'] = plt.get_cmap('Greys_r')
     maps_right[map_sequence_index].plot_settings['cmap'] = plt.get_cmap('Greys_r')
-    maps_left[map_sequence_index].plot(axes=ax_left)
-    maps_right[map_sequence_index].plot(axes=ax_right)
+
+    if is_checked_base_difference:
+        difference_map(base=True)
+    elif is_checked_running_difference:
+        difference_map()
+    else:
+        maps_left[map_sequence_index].plot(axes=ax_left)
+        maps_right[map_sequence_index].plot(axes=ax_right)
 
 
 def clear_clicked_annotations():
@@ -247,6 +254,40 @@ def clear_clicked_annotations():
 
 def update_map_counter():
     text_n_maps.set_text('{0}/{1}'.format(map_sequence_index + 1, len(maps_left)))
+
+
+def base_difference_clicked(label):
+    global is_checked_base_difference
+    is_checked_base_difference = not is_checked_base_difference
+    if is_checked_base_difference:
+        difference_map(base=True)
+
+
+def running_difference_clicked(label):
+    difference_map()
+
+
+def difference_map(base=False):
+    if map_sequence_index < 1:
+        print('Click Next Map first. Difference is not defined at first time.')
+        return
+
+    if base:  # Base difference
+        index = map_sequence_index
+    else:  # Running difference
+        index = 1
+
+    diff_left = maps_left[map_sequence_index].data - maps_left[map_sequence_index - index].data
+    diff_right = maps_right[map_sequence_index].data - maps_right[map_sequence_index - index].data
+    header_left = maps_left[map_sequence_index - index].fits_header
+    header_right = maps_right[map_sequence_index - index].fits_header
+
+    diff_left_map = sunpy.map.Map(diff_left, header_left)
+    diff_right_map = sunpy.map.Map(diff_right, header_right)
+
+    diff_left_map.plot(axes=ax_left)
+    diff_right_map.plot(axes=ax_right)
+    plt.draw()
 
 
 def power_clicked(text):
@@ -363,6 +404,16 @@ textbox_log.on_submit(log_clicked)
 
 
 # Set up buttons
+ax_button_base_diff = plt.axes([0.89, 0.70, 0.10, 0.15])
+diff_labels = ['Base Diff', 'Running Diff']
+checkbox_base_diff = CheckButtons(ax_button_base_diff, diff_labels)
+checkbox_base_diff.on_clicked(base_difference_clicked)
+
+icon_running_diff = plt.imread('https://i.imgur.com/Hsc6G0r.png')
+ax_button_running_diff = plt.axes([0.89, 0.60, 0.10, 0.10])
+button_running_diff = Button(ax_button_running_diff, '', image=icon_running_diff)
+button_running_diff.on_clicked(running_difference_clicked)
+
 icon_next = plt.imread('https://i.imgur.com/4bu7tvv.png')
 ax_button_next = plt.axes([0.89, 0.10, 0.10, 0.10])
 button_next = Button(ax_button_next, '', image=icon_next)
