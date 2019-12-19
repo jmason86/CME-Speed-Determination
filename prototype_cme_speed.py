@@ -234,16 +234,16 @@ def next_map_clicked(event):
 
 
 def load_new_maps():
-    maps_left[map_sequence_index].plot_settings['cmap'] = plt.get_cmap('Greys_r')
-    maps_right[map_sequence_index].plot_settings['cmap'] = plt.get_cmap('Greys_r')
-
     if is_checked_base_difference:
         difference_map(base=True)
     elif is_checked_running_difference:
         difference_map()
     else:
+        maps_left[map_sequence_index].plot_settings['cmap'] = plt.get_cmap('Greys_r')
+        maps_right[map_sequence_index].plot_settings['cmap'] = plt.get_cmap('Greys_r')
         maps_left[map_sequence_index].plot(axes=ax_left)
         maps_right[map_sequence_index].plot(axes=ax_right)
+        plt.draw()
 
 
 def clear_clicked_annotations():
@@ -256,15 +256,20 @@ def update_map_counter():
     text_n_maps.set_text('{0}/{1}'.format(map_sequence_index + 1, len(maps_left)))
 
 
-def base_difference_clicked(label):
-    global is_checked_base_difference
-    is_checked_base_difference = not is_checked_base_difference
-    if is_checked_base_difference:
-        difference_map(base=True)
-
-
-def running_difference_clicked(label):
-    difference_map()
+def difference_clicked(label):
+    global is_checked_base_difference, is_checked_running_difference
+    if label == 'Base':
+        is_checked_base_difference = not is_checked_base_difference
+        if is_checked_base_difference:
+            difference_map(base=True)
+        else:
+            load_new_maps()
+    elif label == 'Running':
+        is_checked_running_difference = not is_checked_running_difference
+        if is_checked_running_difference:
+            difference_map()
+        else:
+            load_new_maps()
 
 
 def difference_map(base=False):
@@ -285,6 +290,8 @@ def difference_map(base=False):
     diff_left_map = sunpy.map.Map(diff_left, header_left)
     diff_right_map = sunpy.map.Map(diff_right, header_right)
 
+    diff_left_map.plot_settings['cmap'] = plt.get_cmap('Greys')
+    diff_right_map.plot_settings['cmap'] = plt.get_cmap('Greys')
     diff_left_map.plot(axes=ax_left)
     diff_right_map.plot(axes=ax_right)
     plt.draw()
@@ -404,15 +411,11 @@ textbox_log.on_submit(log_clicked)
 
 
 # Set up buttons
-ax_button_base_diff = plt.axes([0.89, 0.70, 0.10, 0.15])
-diff_labels = ['Base Diff', 'Running Diff']
-checkbox_base_diff = CheckButtons(ax_button_base_diff, diff_labels)
-checkbox_base_diff.on_clicked(base_difference_clicked)
-
-icon_running_diff = plt.imread('https://i.imgur.com/Hsc6G0r.png')
-ax_button_running_diff = plt.axes([0.89, 0.60, 0.10, 0.10])
-button_running_diff = Button(ax_button_running_diff, '', image=icon_running_diff)
-button_running_diff.on_clicked(running_difference_clicked)
+text_difference = plt.text(0.94, 0.78, 'Diff Image', horizontalalignment='center', transform=fig.transFigure)
+ax_button_diff = plt.axes([0.89, 0.60, 0.10, 0.15])
+diff_labels = ['Base', 'Running']
+checkbox_diff = CheckButtons(ax_button_diff, diff_labels)
+checkbox_diff.on_clicked(difference_clicked)
 
 icon_next = plt.imread('https://i.imgur.com/4bu7tvv.png')
 ax_button_next = plt.axes([0.89, 0.10, 0.10, 0.10])
