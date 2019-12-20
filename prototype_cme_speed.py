@@ -290,10 +290,12 @@ def difference_map(base=False):
     diff_left_map = sunpy.map.Map(diff_left, header_left)
     diff_right_map = sunpy.map.Map(diff_right, header_right)
 
-    diff_left_map.plot_settings['cmap'] = plt.get_cmap('Greys')
-    diff_right_map.plot_settings['cmap'] = plt.get_cmap('Greys')
-    diff_left_map.plot(axes=ax_left)
-    diff_right_map.plot(axes=ax_right)
+    diff_left_map.plot(axes=ax_left,
+                       cmap=plt.get_cmap('Greys'),
+                       norm=colors.Normalize(vmin=-50, vmax=50))
+    diff_right_map.plot(axes=ax_right,
+                        cmap=plt.get_cmap('Greys'),
+                        norm=colors.Normalize(vmin=-50, vmax=50))
     plt.draw()
 
 
