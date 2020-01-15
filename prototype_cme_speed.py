@@ -22,12 +22,11 @@ from matplotlib.lines import Line2D
 import warnings
 warnings.filterwarnings('ignore')
 
-start_time = '2012-07-23T02:30:00'
-end_time = '2012-07-23T03:00:00'
-#end_time = '2012-07-23T05:30:00'
+start_time = '2010-03-01T20:00:00'
+end_time = '2010-03-02T04:00:00'
 
 # Find some data to download
-off_sun_earth_line_imager = (a.vso.Source('STEREO_A') &
+off_sun_earth_line_imager = (a.vso.Source('STEREO_B') &
                              a.Instrument('EUVI') &
                              a.Time(start_time, end_time))
 
@@ -35,25 +34,34 @@ sun_earth_line_imager = (a.Instrument('SWAP') &
                          #a.Detector('C2') &
                          a.Time(start_time, end_time))
 
-wave = a.Wavelength(17 * u.nm, 18 * u.nm)
-result_left = Fido.search(wave, sun_earth_line_imager)
-result_right = Fido.search(wave, off_sun_earth_line_imager)
+wavelength = a.Wavelength(17 * u.nm, 18 * u.nm)
+result_left = Fido.search(wavelength, sun_earth_line_imager)
+result_right = Fido.search(wavelength, off_sun_earth_line_imager)
 
 # and download the files
-downloaded_files_left = Fido.fetch(result_left, progress=False)
-downloaded_files_right = Fido.fetch(result_right, progress=False)
+downloaded_files_left = Fido.fetch(result_left, path='/Users/jmason86/Dropbox/Research/Data/PROBA2/SWAP/')
+downloaded_files_right = Fido.fetch(result_right, path='/Users/jmason86/Dropbox/Research/Data/STEREO/EUVI/')
+
 
 # Load the maps into two arrays that'll be plotted side by side, with left/right corresponding to spacecraft position
-
-
 def which_map_on_left():
     global maps_left, maps_right
     if maps_left[0].wcs.heliographic_observer.lon.min() > maps_right[0].wcs.heliographic_observer.lon.min():
         maps_left, maps_right = maps_right, maps_left
 
 
-maps_left = sunpy.map.Map(downloaded_files_left, sequence=True)
-maps_right = sunpy.map.Map(downloaded_files_right, sequence=True)
+def load_map_sequence(downloaded_files):
+    maps_list = []
+    for file in downloaded_files:
+        try:
+            maps_list.append(sunpy.map.Map(file))
+        except TypeError:
+            print('Error reading file {}. Skipping it.'.format(file))
+    return sunpy.map.MapSequence(maps_list)
+
+
+maps_left = load_map_sequence(downloaded_files_left)
+maps_right = load_map_sequence(downloaded_files_right)
 which_map_on_left()
 
 
@@ -117,6 +125,9 @@ map_sequence_index = 0
 line_of_sight_is_defined = False
 is_checked_base_difference = False
 is_checked_running_difference = False
+is_checked_power_scaling = False
+is_checked_log_scaling = False
+scaling = 1
 
 # Main return value
 skycoord_3d_array = []
@@ -238,6 +249,10 @@ def load_new_maps():
         difference_map(base=True)
     elif is_checked_running_difference:
         difference_map()
+    elif is_checked_power_scaling:
+        power_map()
+    elif is_checked_log_scaling:
+        log_map()
     else:
         maps_left[map_sequence_index].plot_settings['cmap'] = plt.get_cmap('Greys_r')
         maps_right[map_sequence_index].plot_settings['cmap'] = plt.get_cmap('Greys_r')
@@ -300,17 +315,33 @@ def difference_map(base=False):
 
 
 def power_clicked(text):
+    global is_checked_power_scaling, is_checked_log_scaling, scaling
+    is_checked_power_scaling = True
+    is_checked_log_scaling = False
+
     scaling = eval(text)
+    power_map()
+
+
+def power_map():
     maps_left[map_sequence_index].plot_settings['norm'] = colors.PowerNorm(gamma=scaling)
     maps_right[map_sequence_index].plot_settings['norm'] = colors.PowerNorm(gamma=scaling)
 
-    maps_left[map_sequence_index].plot(axes=ax_left)
-    maps_right[map_sequence_index].plot(axes=ax_right)
+    maps_left[map_sequence_index].plot(axes=ax_left, cmap='Greys_r')
+    maps_right[map_sequence_index].plot(axes=ax_right, cmap='Greys_r')
     plt.draw()
 
 
 def log_clicked(text):
+    global is_checked_log_scaling, is_checked_power_scaling, scaling
+    is_checked_log_scaling = True
+    is_checked_power_scaling = False
+
     scaling = eval(text)
+    log_map()
+
+
+def log_map():
     if scaling >= maps_left[map_sequence_index].max():
         print('The input minimum for log scaling is too large for the left map. Try a smaller number.')
         return
@@ -321,8 +352,8 @@ def log_clicked(text):
     maps_left[map_sequence_index].plot_settings['norm'] = colors.LogNorm(scaling, maps_left[map_sequence_index].max())
     maps_right[map_sequence_index].plot_settings['norm'] = colors.LogNorm(scaling, maps_right[map_sequence_index].max())
 
-    maps_left[map_sequence_index].plot(axes=ax_left)
-    maps_right[map_sequence_index].plot(axes=ax_right)
+    maps_left[map_sequence_index].plot(axes=ax_left, cmap='Greys_r')
+    maps_right[map_sequence_index].plot(axes=ax_right, cmap='Greys_r')
     plt.draw()
 
 
