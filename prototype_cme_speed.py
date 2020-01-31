@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Button, TextBox,  CheckButtons
 import matplotlib.colors as colors
 from matplotlib.lines import Line2D
+import seaborn as sns
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
@@ -116,6 +117,7 @@ maps_right[0].plot(axes=ax_right)
 text_n_maps = plt.text(0.94, 0.2, '1/{}'.format(len(maps_left)), horizontalalignment='center', transform=fig.transFigure)
 
 # Prepare kinematic profile plot
+sns.set()
 fig2, (ax_d, ax_s, ax_a) = plt.subplots(3, figsize=(10, 10))
 fig2.suptitle('Radial Kinematic Profiles')
 line_d, = ax_d.plot([], [], 'o-')
