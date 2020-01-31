@@ -4,6 +4,7 @@
 Prototyping CME speed determination tool
 ========================================
 """
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button, TextBox,  CheckButtons
@@ -25,6 +26,12 @@ warnings.filterwarnings('ignore')
 start_time = '2010-03-01T20:00:00'
 end_time = '2010-03-02T04:00:00'
 
+# Path set up
+data_path = '/Users/jmason86/Dropbox/Research/Data/'
+output_path = '/Users/jmason86/Dropbox/Research/ResearchScientist_LASP/Analysis/SWAP CME Speeds/{}'.format(start_time)
+os.makedirs(output_path, exist_ok=True)
+figure_number = 1
+
 # Find some data to download
 off_sun_earth_line_imager = (a.vso.Source('STEREO_B') &
                              a.Instrument('EUVI') &
@@ -39,8 +46,8 @@ result_left = Fido.search(wavelength, sun_earth_line_imager)
 result_right = Fido.search(wavelength, off_sun_earth_line_imager)
 
 # and download the files
-downloaded_files_left = Fido.fetch(result_left, path='/Users/jmason86/Dropbox/Research/Data/PROBA2/SWAP/')
-downloaded_files_right = Fido.fetch(result_right, path='/Users/jmason86/Dropbox/Research/Data/STEREO/EUVI/')
+downloaded_files_left = Fido.fetch(result_left, path='{}PROBA2/SWAP/'.format(data_path))
+downloaded_files_right = Fido.fetch(result_right, path='{}STEREO/EUVI/'.format(data_path))
 
 
 # Load the maps into two arrays that'll be plotted side by side, with left/right corresponding to spacecraft position
@@ -213,6 +220,7 @@ def pick_los_point(event):
         compute_kinematics()
         plot_kinematics()
         put_maps_figure_back_in_focus()
+        save_maps_figure()
     return True
 
 
@@ -425,6 +433,12 @@ def plot_kinematics():
 def put_maps_figure_back_in_focus():
     plt.figure(fig.number)
     plt.get_current_fig_manager().show()
+
+
+def save_maps_figure():
+    global figure_number
+    plt.savefig('{}/{}.png'.format(output_path, figure_number))
+    figure_number += 1
 
 
 # Set up user click interactions
