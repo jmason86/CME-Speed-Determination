@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button, TextBox,  CheckButtons
 import matplotlib.colors as colors
+from matplotlib.lines import Line2D
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
@@ -18,7 +19,7 @@ import sunpy.map
 import sunpy.coordinates.wcs_utils
 from sunpy.net import Fido, attrs as a
 
-from matplotlib.lines import Line2D
+import pickle
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -118,7 +119,7 @@ text_n_maps = plt.text(0.94, 0.2, '1/{}'.format(len(maps_left)), horizontalalign
 fig2, (ax_d, ax_s, ax_a) = plt.subplots(3, figsize=(10, 10))
 fig2.suptitle('Radial Kinematic Profiles')
 line_d, = ax_d.plot([], [], 'o-')
-ax_d.set_ylabel('height [R$_{\odot}$)]')
+ax_d.set_ylabel('height [R$_{\odot}$]')
 line_s, = ax_s.plot([], [], 'o-')
 ax_s.set_ylabel('speed [km s$^{-1}$]')
 text_mean_speed = plt.text(0.02, 0.9, 'mean speed = [] km/s', transform=ax_s.transAxes)
@@ -380,9 +381,8 @@ def compute_kinematics():
     delta_t_sec = compute_delta_time()
     speeds = compute_speeds()
     accelerations = compute_accelerations()
-    print(distances)
-    print(speeds)
-    print(accelerations)
+
+    write_kinematics_to_disk()
 
 
 def compute_distances():
@@ -411,6 +411,16 @@ def compute_accelerations():
         return None
 
 
+def write_kinematics_to_disk():
+    global distances, speeds, accelerations
+    with open('{}/distances.dat'.format(output_path), 'wb') as filehandle:
+        pickle.dump(distances, filehandle)
+    with open('{}/speeds.dat'.format(output_path), 'wb') as filehandle:
+        pickle.dump(speeds, filehandle)
+    with open('{}/accelerations.dat'.format(output_path), 'wb') as filehandle:
+        pickle.dump(accelerations, filehandle)
+
+
 def plot_kinematics():
     if distances is not None:
         line_d.set_data(delta_t_sec, [d.value for d in distances])
@@ -420,7 +430,7 @@ def plot_kinematics():
         line_s.set_data(delta_t_sec, speeds.value)
         ax_s.relim()
         ax_s.autoscale_view()
-        text_mean_speed.set_text('mean speed = {0:.0f} km/s'.format(np.mean(speeds.value)))
+        text_mean_speed.set_text('mean speed = {0:.0f} km/s'.format(np.mean(speeds[np.isfinite(speeds)].value)))
     if accelerations is not None:
         line_a.set_data(delta_t_sec, accelerations.value)
         ax_a.relim()
@@ -428,6 +438,7 @@ def plot_kinematics():
 
     plt.show(block=False)
     fig2.canvas.draw_idle()  # misnomer function -- actually triggers draw (.draw() doesn't work)
+    fig2.savefig('{}/kinematic_profile.png'.format(output_path))
 
 
 def put_maps_figure_back_in_focus():
