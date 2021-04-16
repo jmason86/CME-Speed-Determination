@@ -25,8 +25,8 @@ import pickle
 import warnings
 warnings.filterwarnings('ignore')
 
-start_time = '2010-03-01T20:00:00'
-end_time = '2010-03-02T04:00:00'
+start_time = '2010-03-01T20:35:00'
+end_time = '2010-03-01T23:00:00'
 
 # Path set up
 data_path = '/Users/jmason86/Dropbox/Research/Data/'
